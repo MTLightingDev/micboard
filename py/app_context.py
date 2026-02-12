@@ -16,4 +16,4 @@ class AppContext:
         # List[ShureNetworkDevice]
         self.network_devices: List['ShureNetworkDevice'] = []
         # Queue for messages from sockets to parser
-        self.device_message_queue: asyncio.Queue = asyncio.Queue()
+        self.device_message_queue: asyncio.Queue = None

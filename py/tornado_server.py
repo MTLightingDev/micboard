@@ -3,6 +3,7 @@ import os
 import asyncio
 import socket
 import logging
+from typing import Optional
 
 from tornado import websocket, web, ioloop, escape
 
@@ -10,6 +11,9 @@ import shure
 import config
 import discover
 import offline
+
+
+shutdown_event: Optional[asyncio.Event] = None
 
 
 # https://stackoverflow.com/questions/5899497/checking-file-extension
@@ -184,10 +188,17 @@ def make_app():
     ])
 
 async def start_async():
+    global shutdown_event
+    if shutdown_event is None:
+        shutdown_event = asyncio.Event()
     app = make_app()
     app.listen(config.web_port())
-    ioloop.PeriodicCallback(SocketHandler.ws_dump, 50).start()
+    pc = ioloop.PeriodicCallback(SocketHandler.ws_dump, 50)
+    pc.start()
     # In Tornado 6, IOLoop.current() uses the selector event loop by default.
     # We don't call start() here because asyncio.run() or the existing loop is already running.
     # We just need to keep the coroutine alive.
-    await asyncio.Event().wait()
+    try:
+        await shutdown_event.wait()
+    finally:
+        pc.stop()

@@ -46,50 +46,51 @@ def discover():
             logging.warning("Discovery packet processing error from %s: %s", ip, e)
 
 
+class DiscoveryProtocol(asyncio.DatagramProtocol):
+    def datagram_received(self, data, addr):
+        ip = addr[0]
+        try:
+            decoded_data = data.decode('UTF-8', errors="ignore")
+            process_discovery_packet(ip, decoded_data)
+        except Exception as e:
+            logging.warning("Discovery packet processing error from %s: %s", ip, e)
+
 async def discover_async():
-    """Async variant of discovery loop integrated with asyncio event loop."""
+    """Async variant of discovery loop using asyncio DatagramProtocol."""
     dcid_restore_from_file(config.app_dir('dcid.json'))
+    
+    loop = asyncio.get_running_loop()
+    
+    # Create the socket manually to set REUSEPORT and join multicast group
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # macOS fix
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     except Exception:
         pass
-    sock.bind((MCAST_GRP, MCAST_PORT))
+    
+    sock.bind(('', MCAST_PORT))
+    
     mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-    sock.setblocking(False)
-
+    
+    transport, protocol = await loop.create_datagram_endpoint(
+        lambda: DiscoveryProtocol(),
+        sock=sock
+    )
+    
     try:
         while True:
-            try:
-                data, (ip, _) = sock.recvfrom(1024)
-            except BlockingIOError:
-                await asyncio.sleep(0.05)
-                continue
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logging.warning("Async discovery socket error: %s", e)
-                await asyncio.sleep(0.1)
-                continue
-
-            try:
-                data = data.decode('UTF-8', errors="ignore")
-                process_discovery_packet(ip, data)
-            except Exception as e:
-                logging.warning("Discovery packet processing error from %s: %s", ip, e)
+            await asyncio.sleep(3600)  # Keep the task alive
+    except asyncio.CancelledError:
+        logging.debug("Discovery task cancelled")
     finally:
-        try:
-            sock.close()
-        except Exception:
-            pass
+        transport.close()
 
 def process_discovery_packet(ip, data):
     dcid = dcid_find(data)
     device = dcid_get(dcid)
     rx_type, channels = dcid_model_lookup(device['model'])
-    if __name__ == '__main__':
-        print('RX: {} at: {} DCID: {} BAND: {} CHANNELS: {}'.format(rx_type, ip, dcid, device['band'], channels))
+    logging.info('RX: %s at: %s DCID: %s BAND: %s CHANNELS: %s', rx_type, ip, dcid, device['band'], channels)
 
     add_rx_to_dlist(ip, rx_type, channels)
 

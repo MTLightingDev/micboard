@@ -22,37 +22,25 @@ class ShureNetworkDevice:
         self.type = type
         self.channels: List['ChannelDevice'] = []
         self.rx_com_status = 'DISCONNECTED'
-        self.writeQueue: asyncio.Queue = asyncio.Queue()
+        self.writeQueue: Optional[asyncio.Queue] = None
         self.f: Optional[socket.socket] = None
         self.socket_watchdog = int(time.monotonic())
         self.raw: Dict[str, Any] = defaultdict(dict)
         self.BASECONST: Dict[str, Any] = BASE_CONST[self.type]['base_const']
 
     def socket_connect(self) -> None:
-        try:
-            if BASE_CONST[self.type]['PROTOCOL'] == 'TCP':
-                self.f = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #TCP
-                self.f.settimeout(.2)
-                self.f.connect((self.ip, PORT))
-
-
-            elif BASE_CONST[self.type]['PROTOCOL'] == 'UDP':
-                self.f = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #UDP
-
-            self.set_rx_com_status('CONNECTING')
-            self.enable_metering(.1)
-
-            for string in self.get_all():
-                self.writeQueue.put_nowait(string)
-        except socket.error as e:
-            self.set_rx_com_status('DISCONNECTED')
-
-        self.socket_watchdog = int(time.monotonic())
-
+        # socket_connect is now handled by SocketService in an async way.
+        # This method is kept for compatibility if needed, but it's mostly a no-op now
+        # or it could just trigger the watchdog to reconnect sooner.
+        self.socket_watchdog = int(time.monotonic()) - 21
 
     def socket_disconnect(self) -> None:
         if self.f:
-            self.f.close()
+            try:
+                self.f.close()
+            except:
+                pass
+            self.f = None
         self.set_rx_com_status('DISCONNECTED')
         self.socket_watchdog = int(time.monotonic())
 
@@ -119,6 +107,8 @@ class ShureNetworkDevice:
 
 
     def enable_metering(self, interval):
+        if not self.writeQueue:
+            self.writeQueue = asyncio.Queue()
         if self.type in ['qlxd', 'ulxd', 'axtd', 'p10t']:
             for i in self.get_channels():
                 self.writeQueue.put_nowait('< SET {} METER_RATE {:05d} >'.format(i, int(interval * 1000)))
@@ -127,6 +117,8 @@ class ShureNetworkDevice:
                 self.writeQueue.put_nowait('* METER {} ALL {:03d} *'.format(i, int(interval/30 * 1000)))
 
     def disable_metering(self):
+        if not self.writeQueue:
+            self.writeQueue = asyncio.Queue()
         for i in self.get_channels():
             self.writeQueue.put_nowait(self.BASECONST['meter_stop'].format(i))
 
