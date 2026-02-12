@@ -5,8 +5,9 @@ import time
 
 import os
 import platform
-from optparse import OptionParser
+import argparse
 import sys
+import logging
 
 
 import xml.etree.ElementTree as ET
@@ -40,8 +41,8 @@ def discover():
         data = data.decode('UTF-8', errors="ignore")
         try:
             process_discovery_packet(ip, data)
-        except:
-            pass
+        except Exception as e:
+            logging.warning("Discovery packet processing error from %s: %s", ip, e)
 
 def process_discovery_packet(ip, data):
     dcid = dcid_find(data)
@@ -80,14 +81,14 @@ def add_rx_to_dlist(ip, rx_type, channels):
     rx = next((x for x in discovered if x['ip'] == ip), None)
 
     if rx:
-        rx['timestamp'] = time.time()
+        rx['timestamp'] = time.monotonic()
 
     else:
         discovered.append({
             'ip' : ip,
             'type': rx_type,
             'channels': channels,
-            'timestamp': time.time()
+            'timestamp': time.monotonic()
         })
 
     discovered.sort(key=lambda x: x['ip'])
@@ -96,7 +97,7 @@ def add_rx_to_dlist(ip, rx_type, channels):
 def time_filterd_discovered_list():
     out = []
     for i in discovered:
-        if (time.time() - i['timestamp']) < 30:
+        if (time.monotonic() - i['timestamp']) < 30:
             out.append(i)
     return out
 
@@ -140,21 +141,20 @@ def DCIDMapCheck():
     return None
 
 def main():
-    usage = "usage: %prog [options] arg"
-    parser = OptionParser(usage)
+    parser = argparse.ArgumentParser(description="Discover Shure devices on the network")
 
-    parser.add_option("-i", "--input", dest="input_file",
-                      help="DCID input file")
-    parser.add_option("-o", "--output", dest="output_file",
-                      help="output file")
-    parser.add_option("-c", "--convert", default=False,
-                      action="store_true", dest="convert",
-                      help="Generate dcid.json from input DCIDMap.xml file")
-    parser.add_option("-d", "--discover", default=True,
-                      action="store_true", dest="discover",
-                      help="Discover Shure devices on the network")
+    parser.add_argument("-i", "--input", dest="input_file",
+                        help="DCID input file")
+    parser.add_argument("-o", "--output", dest="output_file",
+                        help="output file")
+    parser.add_argument("-c", "--convert", default=False,
+                        action="store_true", dest="convert",
+                        help="Generate dcid.json from input DCIDMap.xml file")
+    parser.add_argument("-d", "--discover", default=True,
+                        action="store_true", dest="discover",
+                        help="Discover Shure devices on the network")
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
 
     if options.convert:
         if not options.output_file:

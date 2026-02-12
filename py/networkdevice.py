@@ -3,6 +3,10 @@ import queue
 import socket
 from collections import defaultdict
 import logging
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from channel import ChannelDevice
 
 from device_config import BASE_CONST
 from iem import IEM
@@ -13,18 +17,18 @@ PORT = 2202
 
 
 class ShureNetworkDevice:
-    def __init__(self, ip, type):
+    def __init__(self, ip: str, type: str) -> None:
         self.ip = ip
         self.type = type
-        self.channels = []
+        self.channels: List['ChannelDevice'] = []
         self.rx_com_status = 'DISCONNECTED'
-        self.writeQueue = queue.Queue()
-        self.f = None
-        self.socket_watchdog = int(time.perf_counter())
-        self.raw = defaultdict(dict)
-        self.BASECONST = BASE_CONST[self.type]['base_const']
+        self.writeQueue: queue.Queue = queue.Queue()
+        self.f: Optional[socket.socket] = None
+        self.socket_watchdog = int(time.monotonic())
+        self.raw: Dict[str, Any] = defaultdict(dict)
+        self.BASECONST: Dict[str, Any] = BASE_CONST[self.type]['base_const']
 
-    def socket_connect(self):
+    def socket_connect(self) -> None:
         try:
             if BASE_CONST[self.type]['PROTOCOL'] == 'TCP':
                 self.f = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #TCP
@@ -43,35 +47,38 @@ class ShureNetworkDevice:
         except socket.error as e:
             self.set_rx_com_status('DISCONNECTED')
 
-        self.socket_watchdog = int(time.perf_counter())
+        self.socket_watchdog = int(time.monotonic())
 
 
-    def socket_disconnect(self):
-        self.f.close()
+    def socket_disconnect(self) -> None:
+        if self.f:
+            self.f.close()
         self.set_rx_com_status('DISCONNECTED')
-        self.socket_watchdog = int(time.perf_counter())
+        self.socket_watchdog = int(time.monotonic())
 
 
-    def fileno(self):
-        return self.f.fileno()
+    def fileno(self) -> int:
+        if self.f:
+            return self.f.fileno()
+        raise ValueError("Socket is not initialized")
 
-    def set_rx_com_status(self, status):
+    def set_rx_com_status(self, status: str) -> None:
         self.rx_com_status = status
         # if status == 'CONNECTED':
         #     print("Connected to {} at {}".format(self.ip,datetime.datetime.now()))
         # elif status == 'DISCONNECTED':
         #     print("Disconnected from {} at {}".format(self.ip,datetime.datetime.now()))
 
-    def add_channel_device(self, cfg):
+    def add_channel_device(self, cfg: Dict[str, Any]) -> None:
         if BASE_CONST[self.type]['DEVICE_CLASS'] == 'WirelessMic':
             self.channels.append(WirelessMic(self, cfg))
         elif BASE_CONST[self.type]['DEVICE_CLASS'] == 'IEM':
             self.channels.append(IEM(self, cfg))
 
-    def get_device_by_channel(self, channel):
+    def get_device_by_channel(self, channel: int) -> Optional['ChannelDevice']:
         return next((x for x in self.channels if x.channel == int(channel)), None)
 
-    def parse_raw_rx(self, data):
+    def parse_raw_rx(self, data: str) -> None:
         data = data.strip('< >').strip('* ')
         data = data.replace('{', '').replace('}', '')
         data = data.rstrip()
@@ -84,8 +91,8 @@ class ShureNetworkDevice:
 
                 elif split[0] in ['REP', 'REPORT']:
                     self.raw[split[1]] = ' '.join(split[2:])
-            except:
-                logging.warning("Index Error(RX): %s", data)
+            except Exception as e:
+                logging.warning("Index Error(RX): %s - %s", data, e)
 
 
     def get_channels(self):

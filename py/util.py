@@ -1,3 +1,5 @@
-def TVLookup(frequency):
-    frequency = float(frequency)
-    return int((frequency - 470) / 6 + 14)
+from typing import Union
+
+def TVLookup(frequency: Union[str, float, int]) -> int:
+    f = float(frequency)
+    return int((f - 470) / 6 + 14)

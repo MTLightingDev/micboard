@@ -18,7 +18,12 @@ PEAK_LEVEL = {
 
 
 # https://stackoverflow.com/questions/17027878/algorithm-to-find-the-most-significant-bit
-def MSB(audio_level):
+from typing import List, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from networkdevice import ShureNetworkDevice
+
+def MSB(audio_level: int) -> int:
     bitpos = 0
     while audio_level != 0:
         bitpos = bitpos + 1
@@ -26,7 +31,7 @@ def MSB(audio_level):
     return bitpos
 
 class WirelessMic(ChannelDevice):
-    def __init__(self, rx, cfg):
+    def __init__(self, rx: 'ShureNetworkDevice', cfg: Dict[str, Any]) -> None:
         super().__init__(rx, cfg)
         self.battery = 255
         self.prev_battery = 255
@@ -35,7 +40,7 @@ class WirelessMic(ChannelDevice):
         self.rf_level = 0
         self.antenna = 'XX'
         self.tx_offset = 255
-        self.peakstamp = time.time() - 60
+        self.peakstamp = time.monotonic() - 60
         self.quality = 255
         self.runtime = 65535
 
@@ -43,7 +48,7 @@ class WirelessMic(ChannelDevice):
         self.antenna = antenna
 
     def set_peak_flag(self):
-        self.peakstamp = time.time()
+        self.peakstamp = time.monotonic()
         if self not in data_update_list:
             data_update_list.append(self)
 
@@ -91,7 +96,7 @@ class WirelessMic(ChannelDevice):
 
         if 1 <= level <= 5:
             self.prev_battery = level
-            self.timestamp = time.time()
+            self.timestamp = time.monotonic()
 
     # https://stackoverflow.com/questions/1784952/how-get-hoursminutes
     def set_runtime(self, runtime):
@@ -117,13 +122,13 @@ class WirelessMic(ChannelDevice):
         if self.rx.rx_com_status in ['DISCONNECTED', 'CONNECTING']:
             return 'RX_COM_ERROR'
 
-        if (time.time() - self.peakstamp) < PEAK_TIMEOUT:
+        if (time.monotonic() - self.peakstamp) < PEAK_TIMEOUT:
             return 'AUDIO_PEAK'
         # uncomment to ignore mic status of unassigned microphones
         # if not self.get_chan_name()[1]:
         #     return 'UNASSIGNED'
 
-        if (time.time() - self.timestamp) < BATTERY_TIMEOUT:
+        if (time.monotonic() - self.timestamp) < BATTERY_TIMEOUT:
             if 4 <= self.battery <= 5:
                 return 'GOOD'
             elif self.battery == 255 and 4 <= self.prev_battery <= 5:
@@ -140,31 +145,27 @@ class WirelessMic(ChannelDevice):
 
         return 'TX_COM_ERROR'
 
-    def ch_json(self):
-        name = self.get_chan_name()
-        return {
-            'id': name[0], 'name': name[1], 'channel': self.channel,
-            'antenna':self.antenna, 'audio_level': self.audio_level,
-            'rf_level': self.rf_level, 'frequency': self.frequency,
-            'battery':self.battery, 'tx_offset': self.tx_offset, 'quality': self.quality,
-            'status': self.tx_state(), 'slot': self.slot, 'raw': self.raw,
-            'type': self.rx.type, 'name_raw' : self.chan_name_raw, 'runtime' : self.runtime
-        }
-
-    def ch_json_mini(self):
-        data = self.ch_json()
-        data['timestamp'] = time.time()
-        del data['raw']
-        return data
-
-    def chart_json(self):
-        return {
+    def ch_json(self) -> Dict[str, Any]:
+        data = super().ch_json()
+        data.update({
+            'antenna': self.antenna,
             'audio_level': self.audio_level,
             'rf_level': self.rf_level,
-            'slot': self.slot,
-            'type': self.rx.type,
-            'timestamp': time.time()
-        }
+            'battery': self.battery,
+            'tx_offset': self.tx_offset,
+            'quality': self.quality,
+            'status': self.tx_state(),
+            'runtime': self.runtime
+        })
+        return data
+
+    def chart_json(self) -> Dict[str, Any]:
+        data = super().chart_json()
+        data.update({
+            'audio_level': self.audio_level,
+            'rf_level': self.rf_level,
+        })
+        return data
 
     def parse_sample(self, split):
         if self.rx.type in ['qlxd', 'ulxd']:

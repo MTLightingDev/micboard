@@ -23,15 +23,15 @@ def file_list(extension):
     return files
 
 # Its not efficecent to get the IP each time, but for now we'll assume server might have dynamic IP
-def localURL():
+def localURL() -> str:
     if 'local_url' in config.config_tree:
         return config.config_tree['local_url']
     try:
         ip = socket.gethostbyname(socket.gethostname())
         return 'http://{}:{}'.format(ip, config.config_tree['port'])
-    except:
+    except Exception as e:
+        logging.error("Could not determine local URL: %s", e)
         return 'https://micboard.io'
-    return 'https://micboard.io'
 
 def micboard_json(network_devices):
     offline_devices = offline.offline_json()
@@ -87,12 +87,12 @@ class SocketHandler(websocket.WebSocketHandler):
             c.close()
 
     @classmethod
-    def broadcast(cls, data):
+    def broadcast(cls, data: str) -> None:
         for c in cls.clients:
             try:
                 c.write_message(data)
-            except:
-                logging.warning("WS Error")
+            except Exception as e:
+                logging.warning("WS Broadcast Error: %s", e)
 
     @classmethod
     def ws_dump(cls):
@@ -124,7 +124,7 @@ class SlotHandler(web.RequestHandler):
         self.write('{}')
         for slot_update in data:
             config.update_slot(slot_update)
-            print(slot_update)
+            logging.info("Slot update: %s", slot_update)
 
 class ConfigHandler(web.RequestHandler):
     def get(self):
@@ -132,7 +132,7 @@ class ConfigHandler(web.RequestHandler):
 
     def post(self):
         data = json.loads(self.request.body)
-        print(data)
+        logging.info("Config update: %s", data)
         self.write('{}')
         config.reconfig(data)
 
@@ -143,12 +143,12 @@ class GroupUpdateHandler(web.RequestHandler):
     def post(self):
         data = json.loads(self.request.body)
         config.update_group(data)
-        print(data)
+        logging.info("Group update: %s", data)
         self.write(data)
 
 class MicboardReloadConfigHandler(web.RequestHandler):
     def post(self):
-        print("RECONFIG")
+        logging.info("Reconfig requested")
         config.reconfig()
         self.write("restarting")
 
@@ -162,7 +162,15 @@ class NoCacheHandler(web.StaticFileHandler):
 
 
 def twisted():
-    app = web.Application([
+    app = make_app()
+    # https://github.com/tornadoweb/tornado/issues/2308
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    app.listen(config.web_port())
+    ioloop.PeriodicCallback(SocketHandler.ws_dump, 50).start()
+    ioloop.IOLoop.instance().start()
+
+def make_app():
+    return web.Application([
         (r'/', IndexHandler),
         (r'/about', AboutHandler),
         (r'/ws', SocketHandler),
@@ -174,8 +182,12 @@ def twisted():
         (r'/static/(.*)', web.StaticFileHandler, {'path': config.app_dir('static')}),
         (r'/bg/(.*)', NoCacheHandler, {'path': config.get_gif_dir()})
     ])
-    # https://github.com/tornadoweb/tornado/issues/2308
-    asyncio.set_event_loop(asyncio.new_event_loop())
+
+async def start_async():
+    app = make_app()
     app.listen(config.web_port())
     ioloop.PeriodicCallback(SocketHandler.ws_dump, 50).start()
-    ioloop.IOLoop.instance().start()
+    # In Tornado 6, IOLoop.current() uses the selector event loop by default.
+    # We don't call start() here because asyncio.run() or the existing loop is already running.
+    # We just need to keep the coroutine alive.
+    await asyncio.Event().wait()

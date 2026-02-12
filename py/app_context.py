@@ -1,4 +1,8 @@
 import queue
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from networkdevice import ShureNetworkDevice
 
 
 class AppContext:
@@ -8,8 +12,8 @@ class AppContext:
     keeping the existing threaded architecture intact.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # List[ShureNetworkDevice]
-        self.network_devices = []
+        self.network_devices: List['ShureNetworkDevice'] = []
         # Queue for messages from sockets to parser
-        self.device_message_queue = queue.Queue()
+        self.device_message_queue: queue.Queue = queue.Queue()

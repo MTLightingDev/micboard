@@ -1,16 +1,20 @@
 import time
 import logging
+from typing import List, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from networkdevice import ShureNetworkDevice
 
 from device_config import BASE_CONST
 from channel import ChannelDevice, data_update_list, chart_update_list
 
 class IEM(ChannelDevice):
-    def __init__(self, rx, cfg):
+    def __init__(self, rx: 'ShureNetworkDevice', cfg: Dict[str, Any]) -> None:
         super().__init__(rx, cfg)
         self.audio_level_l = 0
         self.audio_level_r = 0
 
-    def set_audio_level(self, audio_level, side):
+    def set_audio_level(self, audio_level: str, side: str) -> None:
         audio_level = int(audio_level)
         if audio_level < 10272:
             audio_level = 0
@@ -36,7 +40,7 @@ class IEM(ChannelDevice):
         elif side == 'RIGHT':
             self.audio_level_r = audio_level
 
-    def parse_report(self, split):
+    def parse_report(self, split: List[str]) -> None:
         if split[2] == self.CHCONST['name']:
             self.set_chan_name_raw(' '.join(split[3:]))
         elif split[2] == self.CHCONST['frequency']:
@@ -47,10 +51,10 @@ class IEM(ChannelDevice):
             self.set_audio_level(split[3], 'RIGHT')
             chart_update_list.append(self.chart_json())
 
-    def parse_sample(self, split):
+    def parse_sample(self, split: List[str]) -> None:
         pass
 
-    def ch_state(self):
+    def ch_state(self) -> str:
         if self.rx.rx_com_status in ['DISCONNECTED', 'CONNECTING']:
             return 'RX_COM_ERROR'
 
@@ -59,28 +63,19 @@ class IEM(ChannelDevice):
 
         return 'TX_COM_ERROR'
 
-    def chart_json(self):
-
-        return {
+    def chart_json(self) -> Dict[str, Any]:
+        data = super().chart_json()
+        data.update({
             'audio_level_l': self.audio_level_l,
             'audio_level_r': self.audio_level_r,
-            'slot': self.slot,
-            'type': self.rx.type,
-            'timestamp': time.time()
-        }
+        })
+        return data
 
-
-    def ch_json(self):
-        name = self.get_chan_name()
-        return {
-            'id': name[0], 'name': name[1], 'channel': self.channel, 'status': self.ch_state(),
-            'audio_level_l' : self.audio_level_l, 'audio_level_r' : self.audio_level_r,
-            'frequency': self.frequency, 'slot': self.slot, 'raw': self.raw,
-            'type': self.rx.type, 'name_raw' : self.chan_name_raw
-        }
-
-    def ch_json_mini(self):
-        data = self.ch_json()
-        data['timestamp'] = time.time()
-        del data['raw']
+    def ch_json(self) -> Dict[str, Any]:
+        data = super().ch_json()
+        data.update({
+            'status': self.ch_state(),
+            'audio_level_l': self.audio_level_l,
+            'audio_level_r': self.audio_level_r,
+        })
         return data

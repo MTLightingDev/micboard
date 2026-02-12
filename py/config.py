@@ -107,7 +107,7 @@ def default_gif_dir():
     path = config_path('backgrounds')
     if not os.path.exists(path):
         os.makedirs(path)
-    print("GIFCHECK!")
+    logging.debug("Ensured default background directory exists at %s", path)
     return path
 
 def get_gif_dir():

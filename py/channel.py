@@ -2,37 +2,41 @@ import time
 import re
 from collections import defaultdict
 import logging
+from typing import List, Dict, Any, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from networkdevice import ShureNetworkDevice
 
 import config
 from device_config import BASE_CONST
 
-chart_update_list = []
-data_update_list = []
+chart_update_list: List[Dict[str, Any]] = []
+data_update_list: List['ChannelDevice'] = []
 
 
 class ChannelDevice:
-    def __init__(self, rx, cfg):
+    def __init__(self, rx: 'ShureNetworkDevice', cfg: Dict[str, Any]) -> None:
         self.rx = rx
         self.cfg = cfg
         self.chan_name_raw = 'SLOT {}'.format(cfg['slot'])
         self.channel = cfg['channel']
-        self.timestamp = time.time() - 60
+        self.timestamp = time.monotonic() - 60
         self.frequency = '000000'
         self.slot = cfg['slot']
-        self.raw = defaultdict(dict)
-        self.CHCONST = BASE_CONST[self.rx.type]['ch_const']
+        self.raw: Dict[str, Any] = defaultdict(dict)
+        self.CHCONST: Dict[str, Any] = BASE_CONST[self.rx.type]['ch_const']
 
 
-    def set_frequency(self, frequency):
+    def set_frequency(self, frequency: str) -> None:
         if self.rx.type == 'axtd':
             frequency = frequency.lstrip('0')
         self.frequency = frequency[:3] + '.' + frequency[3:]
 
-    def set_chan_name_raw(self, chan_name):
+    def set_chan_name_raw(self, chan_name: str) -> None:
         chan_name = chan_name.replace('_', ' ')
         self.chan_name_raw = chan_name
 
-    def get_chan_name(self):
+    def get_chan_name(self) -> Tuple[str, str]:
         name = self.chan_name_raw.split()
         prefix = re.match("([A-Za-z]+)?([-]?)([0-9])+", name[0])
 
@@ -68,8 +72,33 @@ class ChannelDevice:
 
         return (chan_id, chan_name)
 
-    def parse_raw_ch(self, data):
+    def ch_json(self) -> Dict[str, Any]:
+        """Base JSON representation of a channel. To be overridden by subclasses."""
+        name = self.get_chan_name()
+        return {
+            'id': name[0],
+            'name': name[1],
+            'channel': self.channel,
+            'frequency': self.frequency,
+            'slot': self.slot,
+            'type': self.rx.type,
+            'name_raw': self.chan_name_raw,
+            'raw': self.raw
+        }
+
+    def ch_json_mini(self) -> Dict[str, Any]:
+        """Minimized JSON representation for high-frequency updates."""
+        data = self.ch_json()
+        data['timestamp'] = time.time()
+        if 'raw' in data:
+            del data['raw']
+        return data
+
+    def parse_raw_ch(self, data: str) -> None:
         split = data.split()
+        if len(split) < 3:
+            return
+
         self.raw[split[2]] = ' '.join(split[3:])
 
         try:
@@ -84,5 +113,20 @@ class ChannelDevice:
                     data_update_list.append(self)
 
         except Exception as e:
-            print("Index Error(TX): {}".format(data.split()))
-            print(e)
+            logging.warning("Error parsing channel data: %s - %s", split, e)
+
+    def parse_sample(self, split: List[str]) -> None:
+        """To be implemented by subclasses."""
+        pass
+
+    def parse_report(self, split: List[str]) -> None:
+        """To be implemented by subclasses."""
+        pass
+
+    def chart_json(self) -> Dict[str, Any]:
+        """To be implemented by subclasses."""
+        return {
+            'slot': self.slot,
+            'type': self.rx.type,
+            'timestamp': time.time()
+        }
