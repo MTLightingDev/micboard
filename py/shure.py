@@ -10,8 +10,19 @@ from channel import chart_update_list, data_update_list
 # from mic import WirelessMic
 # from iem import IEM
 
+# These will be rebound by shure.init(ctx) to the AppContext-managed state.
 NetworkDevices = []
 DeviceMessageQueue = queue.Queue()
+
+
+def init(ctx):
+    """Bind module-level references to the provided application context.
+
+    This keeps the existing API surface while removing hard globals from the rest of the app.
+    """
+    global NetworkDevices, DeviceMessageQueue
+    NetworkDevices = ctx.network_devices
+    DeviceMessageQueue = ctx.device_message_queue
 
 
 def get_network_device_by_ip(ip):

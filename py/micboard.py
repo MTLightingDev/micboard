@@ -6,10 +6,15 @@ import config
 import tornado_server
 import shure
 import discover
+from app_context import AppContext
 
 
 def main():
     config.config()
+
+    # Initialize shared application context and bind shure module globals to it
+    ctx = AppContext()
+    shure.init(ctx)
 
     time.sleep(.1)
     rxquery_t = threading.Thread(target=shure.WirelessQueryQueue)
