@@ -2,6 +2,7 @@ import socket
 import struct
 import json
 import time
+import asyncio
 
 import os
 import platform
@@ -43,6 +44,45 @@ def discover():
             process_discovery_packet(ip, data)
         except Exception as e:
             logging.warning("Discovery packet processing error from %s: %s", ip, e)
+
+
+async def discover_async():
+    """Async variant of discovery loop integrated with asyncio event loop."""
+    dcid_restore_from_file(config.app_dir('dcid.json'))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # macOS fix
+    except Exception:
+        pass
+    sock.bind((MCAST_GRP, MCAST_PORT))
+    mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    sock.setblocking(False)
+
+    try:
+        while True:
+            try:
+                data, (ip, _) = sock.recvfrom(1024)
+            except BlockingIOError:
+                await asyncio.sleep(0.05)
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logging.warning("Async discovery socket error: %s", e)
+                await asyncio.sleep(0.1)
+                continue
+
+            try:
+                data = data.decode('UTF-8', errors="ignore")
+                process_discovery_packet(ip, data)
+            except Exception as e:
+                logging.warning("Discovery packet processing error from %s: %s", ip, e)
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
 
 def process_discovery_packet(ip, data):
     dcid = dcid_find(data)

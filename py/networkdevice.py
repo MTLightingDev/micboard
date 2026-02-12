@@ -1,6 +1,6 @@
-import time
-import queue
+import asyncio
 import socket
+import time
 from collections import defaultdict
 import logging
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
@@ -22,7 +22,7 @@ class ShureNetworkDevice:
         self.type = type
         self.channels: List['ChannelDevice'] = []
         self.rx_com_status = 'DISCONNECTED'
-        self.writeQueue: queue.Queue = queue.Queue()
+        self.writeQueue: asyncio.Queue = asyncio.Queue()
         self.f: Optional[socket.socket] = None
         self.socket_watchdog = int(time.monotonic())
         self.raw: Dict[str, Any] = defaultdict(dict)
@@ -43,7 +43,7 @@ class ShureNetworkDevice:
             self.enable_metering(.1)
 
             for string in self.get_all():
-                self.writeQueue.put(string)
+                self.writeQueue.put_nowait(string)
         except socket.error as e:
             self.set_rx_com_status('DISCONNECTED')
 
@@ -121,14 +121,14 @@ class ShureNetworkDevice:
     def enable_metering(self, interval):
         if self.type in ['qlxd', 'ulxd', 'axtd', 'p10t']:
             for i in self.get_channels():
-                self.writeQueue.put('< SET {} METER_RATE {:05d} >'.format(i, int(interval * 1000)))
+                self.writeQueue.put_nowait('< SET {} METER_RATE {:05d} >'.format(i, int(interval * 1000)))
         elif self.type == 'uhfr':
             for i in self.get_channels():
-                self.writeQueue.put('* METER {} ALL {:03d} *'.format(i, int(interval/30 * 1000)))
+                self.writeQueue.put_nowait('* METER {} ALL {:03d} *'.format(i, int(interval/30 * 1000)))
 
     def disable_metering(self):
         for i in self.get_channels():
-            self.writeQueue.put(self.BASECONST['meter_stop'].format(i))
+            self.writeQueue.put_nowait(self.BASECONST['meter_stop'].format(i))
 
     def net_json(self):
         ch_data = []

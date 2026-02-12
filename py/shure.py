@@ -19,7 +19,7 @@ from channel import chart_update_list, data_update_list
 
 # These will be rebound by shure.init(ctx) to the AppContext-managed state.
 NetworkDevices: List[ShureNetworkDevice] = []
-DeviceMessageQueue: queue.Queue = queue.Queue()
+DeviceMessageQueue: asyncio.Queue = asyncio.Queue()
 
 
 def init(ctx: 'AppContext') -> None:
@@ -73,18 +73,16 @@ async def WirelessQueryQueue() -> None:
         for rx in (rx for rx in NetworkDevices if rx.rx_com_status == 'CONNECTED'):
             strings = rx.get_query_strings()
             for string in strings:
-                rx.writeQueue.put(string)
+                rx.writeQueue.put_nowait(string)
         await asyncio.sleep(10)
 
 async def ProcessRXMessageQueue() -> None:
     while True:
+        rx, msg = await DeviceMessageQueue.get()
         try:
-            # Using loop.run_in_executor for queue.get() if it blocks, 
-            # but since we want to move to async, eventually we should use asyncio.Queue
-            rx, msg = DeviceMessageQueue.get_nowait()
             rx.parse_raw_rx(msg)
-        except queue.Empty:
-            await asyncio.sleep(0.1)
+        finally:
+            DeviceMessageQueue.task_done()
 
 async def SocketService() -> None:
     for rx in NetworkDevices:
@@ -115,7 +113,7 @@ async def SocketService() -> None:
             data = [e+d for e in data.split(d) if e]
 
             for line in data:
-                DeviceMessageQueue.put((rx, line))
+                DeviceMessageQueue.put_nowait((rx, line))
 
             rx.socket_watchdog = int(time.monotonic())
             rx.set_rx_com_status('CONNECTED')
@@ -128,7 +126,7 @@ async def SocketService() -> None:
                     rx.f.sendall(bytearray(string, 'UTF-8'))
                 elif rx.type == 'uhfr':
                     rx.f.sendto(bytearray(string, 'UTF-8'), (rx.ip, 2202))
-            except queue.Empty:
+            except asyncio.QueueEmpty:
                 pass
             except Exception as e:
                 logging.warning("TX error to %s: %s", rx.ip, e)
@@ -136,7 +134,7 @@ async def SocketService() -> None:
         for rx in error_socks:
             rx.set_rx_com_status('DISCONNECTED')
 
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
 
 
 

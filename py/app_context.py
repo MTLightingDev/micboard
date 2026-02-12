@@ -1,4 +1,4 @@
-import queue
+import asyncio
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,4 +16,4 @@ class AppContext:
         # List[ShureNetworkDevice]
         self.network_devices: List['ShureNetworkDevice'] = []
         # Queue for messages from sockets to parser
-        self.device_message_queue: queue.Queue = queue.Queue()
+        self.device_message_queue: asyncio.Queue = asyncio.Queue()
