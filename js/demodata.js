@@ -52,7 +52,7 @@ const name_sample = [
 
 const prefix_sample = ['HH', 'BP'];
 
-const type_sample = ['uhfr', 'qlxd', 'ulxd', 'axtd'];
+const type_sample = ['axtd', 'qlxd', 'slxd', 'uhfr', 'ulxd'];
 
 // https://gist.github.com/kerimdzhanov/7529623
 function getRandomInt(min, max) {

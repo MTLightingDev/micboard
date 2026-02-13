@@ -146,3 +146,31 @@ BASE_CONST['p10t'] = {
         'PSM1KTx': 2,
     }
 }
+
+BASE_CONST['slxd'] = {
+    'DEVICE_CLASS' : 'WirelessMic',
+    'PROTOCOL' : 'TCP',
+    'ch_const' : {
+        'battery': 'TX_BATT_BARS',
+        'quality': 'NOT_SUPPORTED',
+        'frequency': 'FREQUENCY',
+        'audio_level': 'AUDIO_LVL',
+        'rf_level': 'RX_RF_LVL',
+        'name': 'CHAN_NAME',
+        'antenna': 'RF_ANTENNA',
+        'tx_offset' : 'TX_OFFSET',
+        'runtime' : 'TX_BATT_MINS',
+        },
+    'base_const' : {
+        'getAll' : ['< GET {} ALL >'],
+        'query' : [
+            '< GET {} CHAN_NAME >',
+            '< GET {} TX_BATT_BARS >'
+        ],
+        'meter_stop' : '< SET {} METER_RATE 0 >'
+    },
+    'DCID_MODEL' : {
+        'SLX-DSingle' : 1,
+        'SLX-DDual' : 2,
+    }
+}

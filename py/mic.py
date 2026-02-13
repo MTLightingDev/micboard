@@ -12,8 +12,9 @@ PEAK_TIMEOUT = 10
 
 
 PEAK_LEVEL = {
-    'qlxd': 80,
-    'ulxd': 80
+    'qlxd': 110,
+    'ulxd': 110,
+    'slxd': 52
 }
 
 
@@ -61,10 +62,15 @@ class WirelessMic(ChannelDevice):
         if self.rx.type == 'axtd':
             audio_level = audio_level - 20
 
+        if self.rx.type == 'slxd':
+            audio_level = audio_level - 63
+            if audio_level < 0:
+                audio_level = 0
+
         if self.rx.type == 'uhfr':
             audio_level = int(ceil(MSB(audio_level) * (100./8)))
 
-        if self.rx.type in ['qlxd', 'ulxd']:
+        if self.rx.type in ['qlxd', 'ulxd', 'slxd']:
             if audio_level >= PEAK_LEVEL[self.rx.type]:
                 self.set_peak_flag()
 
@@ -77,7 +83,7 @@ class WirelessMic(ChannelDevice):
 
     def set_rf_level(self, rf_level):
         rf_level = float(rf_level)
-        if self.rx.type in ['qlxd', 'ulxd']:
+        if self.rx.type in ['qlxd', 'ulxd', 'slxd']:
             rf_level = 100 * (rf_level / 115)
 
         if self.rx.type == 'axtd':
@@ -108,7 +114,7 @@ class WirelessMic(ChannelDevice):
 
     def set_tx_offset(self, tx_offset):
         if tx_offset != '255':
-            if self.rx.type in ['qlxd', 'ulxd']:
+            if self.rx.type in ['qlxd', 'ulxd', 'slxd']:
                 self.tx_offset = int(tx_offset)
 
             if self.rx.type == 'axtd':
@@ -172,6 +178,18 @@ class WirelessMic(ChannelDevice):
             self.set_antenna(split[3])
             self.set_rf_level(split[4])
             self.set_audio_level(split[5])
+
+        elif self.rx.type == 'slxd':
+            self.set_rf_level(split[5])
+            self.set_audio_level(split[4])
+            peak_val = int(split[3])
+            if peak_val == 255:
+                self.set_peak_flag()
+            else:
+                # Normalize peak_val to match audio_level
+                peak_val = peak_val - 63
+                if peak_val >= PEAK_LEVEL['slxd']:
+                    self.set_peak_flag()
 
         elif self.rx.type == 'uhfr':
             self.set_antenna(split[3])

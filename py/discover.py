@@ -115,6 +115,13 @@ def dcid_model_lookup(name):
             if name == model_k:
                 # print('Type: {} DCID_MODEL: {} Channels: {}'.format(type_k, model_k, model_v))
                 return (type_k, model_v)
+
+    # Fallback for SLX-D if DCID map is missing it
+    if name == 'SLXD4':
+        return ('slxd', 1)
+    if name == 'SLXD4D':
+        return ('slxd', 2)
+
     return None
 
 

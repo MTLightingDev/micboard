@@ -173,6 +173,23 @@ def twisted():
     ioloop.PeriodicCallback(SocketHandler.ws_dump, 50).start()
     ioloop.IOLoop.instance().start()
 
+def log_request(handler):
+    if handler.get_status() == 304:
+        return
+    if handler.get_status() < 400:
+        log_method = logging.info
+    elif handler.get_status() < 500:
+        log_method = logging.warning
+    else:
+        log_method = logging.error
+    request_time = 1000.0 * handler.request.request_time()
+    log_method(
+        "%d %s %.2fms",
+        handler.get_status(),
+        handler._request_summary(),
+        request_time,
+    )
+
 def make_app():
     return web.Application([
         (r'/', IndexHandler),
@@ -185,7 +202,7 @@ def make_app():
         # (r'/restart/', MicboardReloadConfigHandler),
         (r'/static/(.*)', web.StaticFileHandler, {'path': config.app_dir('static')}),
         (r'/bg/(.*)', NoCacheHandler, {'path': config.get_gif_dir()})
-    ])
+    ], log_function=log_request)
 
 async def start_async():
     global shutdown_event

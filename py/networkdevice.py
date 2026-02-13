@@ -75,7 +75,10 @@ class ShureNetworkDevice:
             try:
                 if split[0] in ['REP', 'REPORT', 'SAMPLE'] and split[1] in ['1', '2', '3', '4']:
                     ch = self.get_device_by_channel(int(split[1]))
-                    ch.parse_raw_ch(data)
+                    if ch:
+                        ch.parse_raw_ch(data)
+                    else:
+                        logging.debug("Channel %s not configured for device %s", split[1], self.ip)
 
                 elif split[0] in ['REP', 'REPORT']:
                     self.raw[split[1]] = ' '.join(split[2:])
@@ -109,7 +112,7 @@ class ShureNetworkDevice:
     def enable_metering(self, interval):
         if not self.writeQueue:
             self.writeQueue = asyncio.Queue()
-        if self.type in ['qlxd', 'ulxd', 'axtd', 'p10t']:
+        if self.type in ['qlxd', 'ulxd', 'axtd', 'p10t', 'slxd']:
             for i in self.get_channels():
                 self.writeQueue.put_nowait('< SET {} METER_RATE {:05d} >'.format(i, int(interval * 1000)))
         elif self.type == 'uhfr':

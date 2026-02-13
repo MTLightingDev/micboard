@@ -5,7 +5,7 @@ import { Sortable, Plugins } from '@shopify/draggable';
 import { micboard, updateHash } from './app.js';
 import { postJSON } from './data.js';
 
-const NET_DEVICE_TYPES = ['axtd', 'ulxd', 'qlxd', 'uhfr', 'p10t'];
+const NET_DEVICE_TYPES = ['axtd', 'p10t', 'qlxd', 'slxd', 'uhfr', 'ulxd'];
 
 function updateEditEntry(slotSelector, data) {
   if (data.ip) {
@@ -120,14 +120,15 @@ function generateJSONConfig() {
 
   for (let i = 0; i < configBoard.length; i += 1) {
     const slot = parseInt(configBoard[i].id.replace(/[^\d.]/g, ''), 10);
-    if (slot && (slotList.indexOf(slot) === -1)) {
+    const alreadyExists = slotList.some(item => item.slot === slot);
+    if (slot && !alreadyExists) {
       const output = {};
 
       output.slot = slot;
       output.type = configBoard[i].querySelector('.cfg-type').value;
 
-      if (NET_DEVICE_TYPES.indexOf(output.type) > -1) {
-        output.ip = configBoard[i].querySelector('.cfg-ip').value;
+      if (NET_DEVICE_TYPES.includes(output.type)) {
+        output.ip = configBoard[i].querySelector('.cfg-ip').value.trim();
         output.channel = parseInt(configBoard[i].querySelector('.cfg-channel').value, 10);
       }
 

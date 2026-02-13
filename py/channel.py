@@ -28,9 +28,13 @@ class ChannelDevice:
 
 
     def set_frequency(self, frequency: str) -> None:
-        if self.rx.type == 'axtd':
+        if self.rx.type in ['axtd', 'slxd', 'qlxd', 'ulxd']:
             frequency = frequency.lstrip('0')
-        self.frequency = frequency[:3] + '.' + frequency[3:]
+
+        if len(frequency) > 6:
+            self.frequency = frequency[:-3] + '.' + frequency[-3:]
+        else:
+            self.frequency = frequency[:3] + '.' + frequency[3:]
 
     def set_chan_name_raw(self, chan_name: str) -> None:
         chan_name = chan_name.replace('_', ' ')
