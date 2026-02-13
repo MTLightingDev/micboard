@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0] - 2026-02-12
+### Added
+- Support for SLX-D
+
+### Changed
+- Update webpack config for broader JSX support and upgrade dependencies
+- Transition to Asynchronous I/O & Encapsulate Global State
+- Introduce type hints, replace legacy modules, and refactor for asyncio compatibility
+- Migrate network stack and discovery to asyncio; refactor socket handling and lifecycle management
+
+### Fixed
+- Refactoring race conditions and threading issues result in lots of redundant work
+- QLX-D support for the latest firmwares (tested with 2025 and later)
+
 
 ## [0.8.5] - 2019-10-10
 ### Added
