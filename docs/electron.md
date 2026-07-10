@@ -17,7 +17,6 @@ Download micboard and install dependencies.
 micboard@micboard:~$ git clone https://github.com/karlcswanson/micboard
 micboard@micboard:~$ cd micboard/
 micboard@micboard:~/micboard$ pip3 install -r py/requirements.txt
-micboard@micboard:~/micboard$ pip3 install pyinstaller
 micboard@micboard:~/micboard$ npm install
 ```
 

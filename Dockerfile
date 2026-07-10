@@ -1,18 +1,35 @@
-FROM python:3
+FROM python:3.11-slim
 
-MAINTAINER Karl Swanson <karlcswanson@gmail.com>
+LABEL maintainer="karlcswanson@gmail.com"
 
 WORKDIR /usr/src/app
 
-RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
-RUN apt-get install nodejs
+# Install dependencies for Node.js setup
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg \
+    build-essential \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy package files first to leverage caching
+COPY package*.json ./
+RUN npm install --only=production
+
+# Copy requirements and install python dependencies
+COPY py/requirements.txt ./py/
+RUN pip install --no-cache-dir -r py/requirements.txt
+
+# Copy the rest of the application
 COPY . .
 
-RUN pip3 install -r py/requirements.txt
-RUN npm install --only=prod
+# Build the frontend
 RUN npm run build
 
+# Expose port
 EXPOSE 8058
 
+# Set command
 CMD ["python3", "py/micboard.py"]

@@ -8,8 +8,8 @@ Install git, python3-pip, and Node.js
 ```
 $ sudo apt-get update
 $ sudo apt-get install git python3-pip
-$ curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-$ sudo apt-get install nodejs
+$ curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+$ sudo apt-get install -y nodejs
 ```
 
 Download micboard
