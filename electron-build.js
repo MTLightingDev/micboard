@@ -5,7 +5,7 @@ const Platform = builder.Platform
 
 // Promise is returned
 builder.build({
-  targets: Platform.MAC.createTarget(),
+  targets: Platform.MAC.createTarget(["dmg"]),
   config: {
     appId: 'com.micboard.app',
     productName: 'Micboard Server',
