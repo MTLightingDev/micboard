@@ -12,11 +12,13 @@ The Electron wrapper is written in JavaScript.  It provides a menubar app with a
 ## Building the Electron Wrapper
 Here are the steps to generate `micboard-server.app`
 
-Download micboard and install dependencies.
+Download micboard and set up a virtual environment.
 ```shell
 micboard@micboard:~$ git clone https://github.com/karlcswanson/micboard
 micboard@micboard:~$ cd micboard/
-micboard@micboard:~/micboard$ pip3 install -r py/requirements.txt
+micboard@micboard:~/micboard$ python3 -m venv venv
+micboard@micboard:~/micboard$ source venv/bin/activate
+micboard@micboard:~/micboard$ pip install -r py/requirements.txt
 micboard@micboard:~/micboard$ npm install
 ```
 

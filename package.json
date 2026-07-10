@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "server": "python py/micboard.py",
-    "binary": "pyinstaller py/micboard.spec",
+    "binary": "python3 -m venv venv && ./venv/bin/pip install pyinstaller && ./venv/bin/python -m PyInstaller -y py/micboard.spec",
     "build": "node node_modules/webpack/bin/webpack.js --progress --hide-modules --config=webpack.config.js",
     "app": "electron .",
     "pack": "node electron-build.js",

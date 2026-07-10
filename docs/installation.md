@@ -17,11 +17,13 @@ Download micboard
 $ git clone https://github.com/karlcswanson/micboard.git
 ```
 
-Install micboard software dependencies via npm and pip
+Install micboard software dependencies via npm and pip (using a virtual environment is recommended)
 ```
 $ cd micboard/
 $ npm install --only=prod
-$ pip3 install -r py/requirements.txt
+$ python3 -m venv venv
+$ source venv/bin/activate
+$ pip install -r py/requirements.txt
 ```
 
 build the micboard frontend and run micboard
@@ -66,11 +68,13 @@ Download Micboard
 $ git clone https://github.com/karlcswanson/micboard.git
 ```
 
-Install micboard software dependencies via npm and pip
+Install micboard software dependencies via npm and pip (using a virtual environment is recommended)
 ```
 $ cd micboard/
 $ npm install --only=prod
-$ pip3 install -r py/requirements.txt
+$ python3 -m venv venv
+$ source venv/bin/activate
+$ pip install -r py/requirements.txt
 ```
 
 build the micboard frontend and run micboard
